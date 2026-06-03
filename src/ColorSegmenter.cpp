@@ -92,3 +92,23 @@ void ColorSegmenter::tuneRedMask(const std::string &imagePath) const
     }
     cv::destroyAllWindows();
 }
+
+cv::Mat ColorSegmenter::getStaticRedMask(const cv::Mat &inputImage) const
+{
+    cv::Mat blurredImage, hsvImage;
+    cv::GaussianBlur(inputImage, blurredImage, cv::Size(5, 5), 0);
+    cv::cvtColor(blurredImage, hsvImage, cv::COLOR_BGR2HSV);
+
+    // USE YOUR HARDCODED VALUES HERE!
+    cv::Mat mask1, mask2, combinedMask;
+    cv::inRange(hsvImage, cv::Scalar(0, 120, 70), cv::Scalar(10, 255, 255), mask1);
+    cv::inRange(hsvImage, cv::Scalar(170, 120, 70), cv::Scalar(180, 255, 255), mask2);
+
+    cv::bitwise_or(mask1, mask2, combinedMask);
+
+    cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+    cv::morphologyEx(combinedMask, combinedMask, cv::MORPH_OPEN, element);
+    cv::morphologyEx(combinedMask, combinedMask, cv::MORPH_CLOSE, element);
+
+    return combinedMask; // Handing the clean mask over to the ShapeAnalyzer!
+}
