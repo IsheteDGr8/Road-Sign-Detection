@@ -14,7 +14,7 @@ int main()
     ShapeAnalyzer analyzer;
 
     // --- TEST 1: RED STOP SIGN ---
-    std::string redImagePath = "data/no_entry_sign_1.jpg";
+    std::string redImagePath = "data/stop_sign_1.jpg";
     cv::Mat redImg = cv::imread(redImagePath);
     if (!redImg.empty())
     {
@@ -22,7 +22,7 @@ int main()
         cv::resize(redImg, redImg, cv::Size(600, (int)(redImg.rows * (600.0 / redImg.cols))));
 
         cv::Mat redMask = segmenter.getStaticRedMask(redImg);
-        analyzer.detectStopSign(redMask, redImg); // Run the shape logic!
+        analyzer.detectRedSigns(redMask, redImg); // Run the shape logic!
 
         cv::imshow("1 - Mask", redMask);
         cv::imshow("1 - Final Output", redImg);

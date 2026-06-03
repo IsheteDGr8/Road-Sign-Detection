@@ -1,11 +1,8 @@
 ================================================================================
 Linker Errors
-Generated: 2026-06-03T10:02:36.714Z
-Total Errors: 2
+Generated: 2026-06-03T10:58:48.005Z
+Total Errors: 1
 ================================================================================
 
-[LNK2005] (MSVC)
-main already defined in ShapeAnalyzer.obj [C:\Users\ishaa\OneDrive - UW\Spring 2026\CSS 487_Computer Vision\Road Sign Detection\build\SignDetector.vcxproj]
-
-[LNK1169] (MSVC)
-one or more multiply defined symbols found [C:\Users\ishaa\OneDrive - UW\Spring 2026\CSS 487_Computer Vision\Road Sign Detection\build\SignDetector.vcxproj]
+[LNK1168] (MSVC)
+cannot open C:\Users\ishaa\OneDrive - UW\Spring 2026\CSS 487_Computer Vision\Road Sign Detection\build\Debug\SignDetector.exe for writing [C:\Users\ishaa\OneDrive - UW\Spring 2026\CSS 487_Computer Vision\Road Sign Detection\build\SignDetector.vcxproj]

@@ -5,46 +5,44 @@
  */
 #include "../include/ShapeAnalyzer.h"
 
-void ShapeAnalyzer::detectStopSign(const cv::Mat &binaryMask, cv::Mat &outputImage) const
+void ShapeAnalyzer::detectRedSigns(const cv::Mat &binaryMask, cv::Mat &outputImage) const
 {
-    // 1. Find the boundaries of all white blobs in the mask
     std::vector<std::vector<cv::Point>> contours;
     std::vector<cv::Vec4i> hierarchy;
-
-    // RETR_EXTERNAL ignores holes inside the shape; CHAIN_APPROX_SIMPLE compresses straight lines
     cv::findContours(binaryMask, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
     for (const auto &contour : contours)
     {
-        // 2. Area Filter: Ignore tiny specks of white noise (dust, distant red cars)
         double area = cv::contourArea(contour);
         if (area < 1000.0)
-        {
             continue;
-        }
 
-        // 3. Mathematical Shape Approximation
-        std::vector<cv::Point> approxPolygon;
         double perimeter = cv::arcLength(contour, true);
 
-        // Epsilon is the maximum distance between the original curve and its approximation.
-        // 2% of the perimeter is the industry standard for geometric shapes.
-        double epsilon = 0.02 * perimeter;
+        // --- THE FIX: Tighter Epsilon ---
+        // 1% of perimeter forces circles to map to 12+ vertices, while octagons stay at 8.
+        double epsilon = 0.01 * perimeter;
+
+        std::vector<cv::Point> approxPolygon;
         cv::approxPolyDP(contour, approxPolygon, epsilon, true);
 
-        // 4. The Heuristic: A perfect stop sign has 8 sides.
-        // We accept 7 to 9 to account for pixelation or slight angles in the camera.
         int vertices = (int)approxPolygon.size();
+        cv::Rect boundingBox = cv::boundingRect(approxPolygon);
 
-        if (vertices >= 7 && vertices <= 9)
+        // Branch 1: DO NOT ENTER (Circle)
+        // With a 0.01 epsilon, circles will break down into many small lines (usually 12+)
+        if (vertices > 10)
         {
-            // 5. Success! Calculate the bounding box for the UI
-            cv::Rect boundingBox = cv::boundingRect(approxPolygon);
-
-            // Draw a thick green box around the sign on the ORIGINAL image
-            cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(0, 255, 0), 3);
-
-            // Add the text label just above the box
+            cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(0, 0, 255), 3); // Red Box
+            cv::putText(outputImage, "DO NOT ENTER",
+                        cv::Point(boundingBox.x, boundingBox.y - 10),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
+        }
+        // Branch 2: STOP SIGN (Octagon)
+        // Straight-edged octagons will reliably snap to 7-9 sides even with tight epsilon
+        else if (vertices >= 7 && vertices <= 9)
+        {
+            cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(0, 255, 0), 3); // Green Box
             cv::putText(outputImage, "STOP SIGN",
                         cv::Point(boundingBox.x, boundingBox.y - 10),
                         cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 0), 2);
