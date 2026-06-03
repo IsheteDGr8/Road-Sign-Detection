@@ -29,4 +29,6 @@ public:
      * @return cv::Mat The binary mask isolating red areas.
      */
     cv::Mat getStaticRedMask(const cv::Mat &inputImage) const;
+    cv::Mat getStaticYellowMask(const cv::Mat &inputImage) const;
+    cv::Mat getStaticBlueMask(const cv::Mat &inputImage) const;
 };

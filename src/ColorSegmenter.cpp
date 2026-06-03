@@ -213,3 +213,37 @@ cv::Mat ColorSegmenter::getStaticRedMask(const cv::Mat &inputImage) const
 
     return combinedMask;
 }
+
+cv::Mat ColorSegmenter::getStaticYellowMask(const cv::Mat &inputImage) const
+{
+    cv::Mat blurredImage, hsvImage;
+    cv::GaussianBlur(inputImage, blurredImage, cv::Size(5, 5), 0);
+    cv::cvtColor(blurredImage, hsvImage, cv::COLOR_BGR2HSV);
+
+    cv::Mat mask;
+    // Values extracted from pedestrian crossing tuning
+    cv::inRange(hsvImage, cv::Scalar(15, 100, 100), cv::Scalar(35, 255, 255), mask);
+
+    cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+    cv::morphologyEx(mask, mask, cv::MORPH_OPEN, element);
+    cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, element);
+
+    return mask;
+}
+
+cv::Mat ColorSegmenter::getStaticBlueMask(const cv::Mat &inputImage) const
+{
+    cv::Mat blurredImage, hsvImage;
+    cv::GaussianBlur(inputImage, blurredImage, cv::Size(5, 5), 0);
+    cv::cvtColor(blurredImage, hsvImage, cv::COLOR_BGR2HSV);
+
+    cv::Mat mask;
+    // Values extracted from disabled parking tuning (Lower Hue corrected to 90)
+    cv::inRange(hsvImage, cv::Scalar(90, 61, 87), cv::Scalar(130, 255, 255), mask);
+
+    cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+    cv::morphologyEx(mask, mask, cv::MORPH_OPEN, element);
+    cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, element);
+
+    return mask;
+}
