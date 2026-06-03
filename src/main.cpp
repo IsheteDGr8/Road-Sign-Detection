@@ -14,7 +14,7 @@ int main()
     ShapeAnalyzer analyzer;
 
     // --- TEST 1: RED STOP SIGN ---
-    std::string redImagePath = "data/stop_sign_1.jpg";
+    std::string redImagePath = "data/no_entry_sign_1.jpg";
     cv::Mat redImg = cv::imread(redImagePath);
     if (!redImg.empty())
     {
