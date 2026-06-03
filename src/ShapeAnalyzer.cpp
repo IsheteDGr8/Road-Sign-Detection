@@ -11,38 +11,109 @@ void ShapeAnalyzer::detectRedSigns(const cv::Mat &binaryMask, cv::Mat &outputIma
     std::vector<cv::Vec4i> hierarchy;
     cv::findContours(binaryMask, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
+    // Calculate maximum allowed area (e.g., 20% of the total image)
+    double maxSignArea = outputImage.rows * outputImage.cols * 0.20;
+
     for (const auto &contour : contours)
     {
         double area = cv::contourArea(contour);
-        if (area < 1000.0)
+
+        // --- FIX 1: Min and Max Area ---
+        if (area < 1000.0 || area > maxSignArea)
             continue;
 
-        double perimeter = cv::arcLength(contour, true);
+        cv::Rect boundingBox = cv::boundingRect(contour);
 
-        // --- THE FIX: Tighter Epsilon ---
-        // 1% of perimeter forces circles to map to 12+ vertices, while octagons stay at 8.
+        // --- FIX 2: The Horizon Filter ---
+        // Ignore anything in the bottom 30% of the screen (the car's hood / road surface)
+        if (boundingBox.y > outputImage.rows * 0.70)
+            continue;
+
+        // --- FIX 3: Aspect Ratio ---
+        // Width divided by height. Stop signs and Do Not Enter signs are basically 1:1 squares.
+        double aspectRatio = (double)boundingBox.width / boundingBox.height;
+        if (aspectRatio < 0.75 || aspectRatio > 1.25)
+            continue; // Ignore wide trucks or tall poles
+
+        // If it passes the real-world physical filters, do the math:
+        double perimeter = cv::arcLength(contour, true);
         double epsilon = 0.01 * perimeter;
 
         std::vector<cv::Point> approxPolygon;
         cv::approxPolyDP(contour, approxPolygon, epsilon, true);
 
         int vertices = (int)approxPolygon.size();
-        cv::Rect boundingBox = cv::boundingRect(approxPolygon);
 
-        // Branch 1: DO NOT ENTER (Circle)
-        // With a 0.01 epsilon, circles will break down into many small lines (usually 12+)
+        // Branch 1: DO NOT ENTER (Circle -> Many vertices due to tight epsilon)
         if (vertices > 10)
         {
-            cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(0, 0, 255), 3); // Red Box
+            cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(0, 0, 255), 3);
             cv::putText(outputImage, "DO NOT ENTER",
                         cv::Point(boundingBox.x, boundingBox.y - 10),
                         cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
         }
         // Branch 2: STOP SIGN (Octagon)
-        // Straight-edged octagons will reliably snap to 7-9 sides even with tight epsilon
         else if (vertices >= 7 && vertices <= 9)
         {
-            cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(0, 255, 0), 3); // Green Box
+            cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(0, 255, 0), 3);
+            cv::putText(outputImage, "STOP SIGN",
+                        cv::Point(boundingBox.x, boundingBox.y - 10),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 0), 2);
+        }
+    }
+}
+
+void ShapeAnalyzer::detectRedSigns(const cv::Mat &binaryMask, cv::Mat &outputImage) const
+{
+    std::vector<std::vector<cv::Point>> contours;
+    std::vector<cv::Vec4i> hierarchy;
+    cv::findContours(binaryMask, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+    // Calculate maximum allowed area (e.g., 20% of the total image)
+    double maxSignArea = outputImage.rows * outputImage.cols * 0.20;
+
+    for (const auto &contour : contours)
+    {
+        double area = cv::contourArea(contour);
+
+        // --- FIX 1: Min and Max Area ---
+        if (area < 1000.0 || area > maxSignArea)
+            continue;
+
+        cv::Rect boundingBox = cv::boundingRect(contour);
+
+        // --- FIX 2: The Horizon Filter ---
+        // Ignore anything in the bottom 30% of the screen (the car's hood / road surface)
+        if (boundingBox.y > outputImage.rows * 0.70)
+            continue;
+
+        // --- FIX 3: Aspect Ratio ---
+        // Width divided by height. Stop signs and Do Not Enter signs are basically 1:1 squares.
+        double aspectRatio = (double)boundingBox.width / boundingBox.height;
+        if (aspectRatio < 0.75 || aspectRatio > 1.25)
+            continue; // Ignore wide trucks or tall poles
+
+        // If it passes the real-world physical filters, do the math:
+        double perimeter = cv::arcLength(contour, true);
+        double epsilon = 0.01 * perimeter;
+
+        std::vector<cv::Point> approxPolygon;
+        cv::approxPolyDP(contour, approxPolygon, epsilon, true);
+
+        int vertices = (int)approxPolygon.size();
+
+        // Branch 1: DO NOT ENTER (Circle -> Many vertices due to tight epsilon)
+        if (vertices > 10)
+        {
+            cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(0, 0, 255), 3);
+            cv::putText(outputImage, "DO NOT ENTER",
+                        cv::Point(boundingBox.x, boundingBox.y - 10),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
+        }
+        // Branch 2: STOP SIGN (Octagon)
+        else if (vertices >= 7 && vertices <= 9)
+        {
+            cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(0, 255, 0), 3);
             cv::putText(outputImage, "STOP SIGN",
                         cv::Point(boundingBox.x, boundingBox.y - 10),
                         cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 0), 2);

@@ -1,9 +1,4 @@
-/**
- * @file main.cpp
- * @brief Sequential testing script for Road Sign Detection masks & shape logic.
- */
 #include <iostream>
-#include <string>
 #include <opencv2/opencv.hpp>
 #include "../include/ColorSegmenter.h"
 #include "../include/ShapeAnalyzer.h"
@@ -13,57 +8,67 @@ int main()
     ColorSegmenter segmenter;
     ShapeAnalyzer analyzer;
 
-    // --- TEST 1: RED STOP SIGN ---
-    std::string redImagePath = "data/no_entry_sign_1.jpg";
-    cv::Mat redImg = cv::imread(redImagePath);
-    if (!redImg.empty())
+    // --- THE ONLY MAJOR CHANGE ---
+    // Instead of '0' for webcam, pass the path to your video file!
+    std::string videoPath = "data/dashcam.mp4";
+    cv::VideoCapture cap(videoPath);
+
+    if (!cap.isOpened())
     {
-        std::cout << "Testing Red Sign... (Press key to continue)" << std::endl;
-        cv::resize(redImg, redImg, cv::Size(600, (int)(redImg.rows * (600.0 / redImg.cols))));
-
-        cv::Mat redMask = segmenter.getStaticRedMask(redImg);
-        analyzer.detectRedSigns(redMask, redImg); // Run the shape logic!
-
-        cv::imshow("1 - Mask", redMask);
-        cv::imshow("1 - Final Output", redImg);
-        cv::waitKey(0);
-        cv::destroyAllWindows();
+        std::cerr << "Error: Could not open the video file!" << std::endl;
+        return -1;
     }
 
-    // --- TEST 2: YELLOW WARNING SIGN ---
-    std::string yellowImagePath = "data/pedestrian_crossing_sign_2.jpg";
-    cv::Mat yellowImg = cv::imread(yellowImagePath);
-    if (!yellowImg.empty())
+    std::cout << "Video Feed started. Press 'ESC' to exit early." << std::endl;
+
+    cv::Mat frame, redMask, yellowMask, blueMask;
+    double fps = 0.0;
+
+    while (true)
     {
-        std::cout << "Testing Yellow Sign... (Press key to continue)" << std::endl;
-        cv::resize(yellowImg, yellowImg, cv::Size(600, (int)(yellowImg.rows * (600.0 / yellowImg.cols))));
+        int64 startTick = cv::getTickCount();
 
-        cv::Mat yellowMask = segmenter.getStaticYellowMask(yellowImg);
-        analyzer.detectWarningSign(yellowMask, yellowImg); // Run the shape logic!
+        cap >> frame;
 
-        cv::imshow("2 - Mask", yellowMask);
-        cv::imshow("2 - Final Output", yellowImg);
-        cv::waitKey(0);
-        cv::destroyAllWindows();
+        // If the video reaches the end, frame.empty() becomes true and it gracefully exits
+        if (frame.empty())
+        {
+            std::cout << "End of video reached." << std::endl;
+            break;
+        }
+
+        // Resize for performance so the HUD fits on your screen
+        cv::resize(frame, frame, cv::Size(800, (int)(frame.rows * (800.0 / frame.cols))));
+
+        // 1. Get Masks
+        redMask = segmenter.getStaticRedMask(frame);
+        yellowMask = segmenter.getStaticYellowMask(frame);
+        blueMask = segmenter.getStaticBlueMask(frame);
+
+        // 2. Analyze Shapes
+        analyzer.detectRedSigns(redMask, frame);
+        analyzer.detectWarningSign(yellowMask, frame);
+        analyzer.detectInfoSign(blueMask, frame);
+
+        // 3. Telemetry HUD
+        int64 endTick = cv::getTickCount();
+        fps = cv::getTickFrequency() / (endTick - startTick);
+        cv::putText(frame, "FPS: " + std::to_string((int)fps), cv::Point(10, 30),
+                    cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
+
+        // Display the result
+        cv::imshow("Road Sign Detection System - DASHCAM", frame);
+
+        // --- PLAYBACK SPEED FIX ---
+        // cv::waitKey(1) plays the video as fast as your CPU allows (fast-forward).
+        // cv::waitKey(30) adds a 30ms delay, making it play at a normal ~30fps speed!
+        if (cv::waitKey(30) == 27)
+        {
+            break;
+        }
     }
 
-    // --- TEST 3: BLUE INFO SIGN ---
-    std::string blueImagePath = "data/disabled_parking_sign_1.jpg";
-    cv::Mat blueImg = cv::imread(blueImagePath);
-    if (!blueImg.empty())
-    {
-        std::cout << "Testing Blue Sign... (Press key to close)" << std::endl;
-        cv::resize(blueImg, blueImg, cv::Size(600, (int)(blueImg.rows * (600.0 / blueImg.cols))));
-
-        cv::Mat blueMask = segmenter.getStaticBlueMask(blueImg);
-        analyzer.detectInfoSign(blueMask, blueImg); // Run the shape logic!
-
-        cv::imshow("3 - Mask", blueMask);
-        cv::imshow("3 - Final Output", blueImg);
-        cv::waitKey(0);
-        cv::destroyAllWindows();
-    }
-
-    std::cout << "All tests complete!" << std::endl;
+    cap.release();
+    cv::destroyAllWindows();
     return 0;
 }
