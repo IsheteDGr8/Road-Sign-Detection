@@ -5,6 +5,9 @@ project(SignDetector CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Tell CMake EXACTLY where OpenCV lives (use forward slashes!)
+set(OpenCV_DIR "C:/opencv/build")
+
 # Locate OpenCV installation
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})

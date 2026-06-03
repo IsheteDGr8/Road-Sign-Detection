@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\ishaa\OneDrive - UW\Spring 2026\CSS 487_Computer Vision\Road Sign Detection\src\ColorSegmenter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ishaa\OneDrive - UW\Spring 2026\CSS 487_Computer Vision\Road Sign Detection\src\DecisionEngine.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ishaa\OneDrive - UW\Spring 2026\CSS 487_Computer Vision\Road Sign Detection\src\ShapeAnalyzer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ishaa\OneDrive - UW\Spring 2026\CSS 487_Computer Vision\Road Sign Detection\src\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ishaa\OneDrive - UW\Spring 2026\CSS 487_Computer Vision\Road Sign Detection\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{698A1E60-8A6D-384B-B637-DF1F2B6D263E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,10 @@
+^C:\USERS\ISHAA\ONEDRIVE - UW\SPRING 2026\CSS 487_COMPUTER VISION\ROAD SIGN DETECTION\BUILD\CMAKEFILES\2BFB729CA3FEEA56AE616170E0373AA7\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" "-SC:/Users/ishaa/OneDrive - UW/Spring 2026/CSS 487_Computer Vision/Road Sign Detection" "-BC:/Users/ishaa/OneDrive - UW/Spring 2026/CSS 487_Computer Vision/Road Sign Detection/build" --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file "C:/Users/ishaa/OneDrive - UW/Spring 2026/CSS 487_Computer Vision/Road Sign Detection/build/SignDetector.sln"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
