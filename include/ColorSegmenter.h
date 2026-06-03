@@ -20,6 +20,8 @@ public:
      * @post Opens OpenCV windows. Blocks execution until 'ESC' or 'q' is pressed.
      */
     void tuneRedMask(const std::string &imagePath) const;
+    void tuneYellowMask(const std::string &imagePath) const;
+    void tuneBlueMask(const std::string &imagePath) const;
 
     /**
      * @brief Generates a binary mask using hardcoded red HSV values.
