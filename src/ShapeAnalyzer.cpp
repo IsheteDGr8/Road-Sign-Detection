@@ -1,7 +1,6 @@
 /**
  * @file ShapeAnalyzer.cpp
  * @brief Implements contour extraction and polygon approximation logic.
- * @author Manish & Ishaan
  */
 #include "../include/ShapeAnalyzer.h"
 
@@ -11,31 +10,25 @@ void ShapeAnalyzer::detectRedSigns(const cv::Mat &binaryMask, cv::Mat &outputIma
     std::vector<cv::Vec4i> hierarchy;
     cv::findContours(binaryMask, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-    // Calculate maximum allowed area (e.g., 20% of the total image)
-    double maxSignArea = outputImage.rows * outputImage.cols * 0.20;
+    // FIX: Allow signs to take up to 95% of the screen (for close-up static images)
+    double maxSignArea = outputImage.rows * outputImage.cols * 0.95;
 
     for (const auto &contour : contours)
     {
         double area = cv::contourArea(contour);
-
-        // --- FIX 1: Min and Max Area ---
         if (area < 1000.0 || area > maxSignArea)
             continue;
 
         cv::Rect boundingBox = cv::boundingRect(contour);
 
-        // --- FIX 2: The Horizon Filter ---
-        // Ignore anything in the bottom 30% of the screen (the car's hood / road surface)
-        if (boundingBox.y > outputImage.rows * 0.70)
+        // Horizon filter: Ignore objects touching the absolute bottom edge
+        if (boundingBox.y > outputImage.rows * 0.85)
             continue;
 
-        // --- FIX 3: Aspect Ratio ---
-        // Width divided by height. Stop signs and Do Not Enter signs are basically 1:1 squares.
         double aspectRatio = (double)boundingBox.width / boundingBox.height;
         if (aspectRatio < 0.75 || aspectRatio > 1.25)
-            continue; // Ignore wide trucks or tall poles
+            continue;
 
-        // If it passes the real-world physical filters, do the math:
         double perimeter = cv::arcLength(contour, true);
         double epsilon = 0.01 * perimeter;
 
@@ -44,7 +37,6 @@ void ShapeAnalyzer::detectRedSigns(const cv::Mat &binaryMask, cv::Mat &outputIma
 
         int vertices = (int)approxPolygon.size();
 
-        // Branch 1: DO NOT ENTER (Circle -> Many vertices due to tight epsilon)
         if (vertices > 10)
         {
             cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(0, 0, 255), 3);
@@ -52,7 +44,6 @@ void ShapeAnalyzer::detectRedSigns(const cv::Mat &binaryMask, cv::Mat &outputIma
                         cv::Point(boundingBox.x, boundingBox.y - 10),
                         cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 0, 255), 2);
         }
-        // Branch 2: STOP SIGN (Octagon)
         else if (vertices >= 7 && vertices <= 9)
         {
             cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(0, 255, 0), 3);
@@ -69,37 +60,51 @@ void ShapeAnalyzer::detectWarningSign(const cv::Mat &binaryMask, cv::Mat &output
     std::vector<cv::Vec4i> hierarchy;
     cv::findContours(binaryMask, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-    // Maximum allowed area (20% of the screen)
-    double maxSignArea = outputImage.rows * outputImage.cols * 0.20;
+    double maxSignArea = outputImage.rows * outputImage.cols * 0.99;
 
+    // --- NEW LOGIC: The Relative Scale Filter ---
+    // First pass: Find the absolute largest yellow shape in the frame
+    double largestArea = 0.0;
+    for (const auto &contour : contours)
+    {
+        double area = cv::contourArea(contour);
+        if (area > largestArea && area < maxSignArea)
+        {
+            largestArea = area;
+        }
+    }
+
+    // Second pass: Draw bounding boxes
     for (const auto &contour : contours)
     {
         double area = cv::contourArea(contour);
 
-        // 1. Min/Max Area Filter
-        if (area < 1000.0 || area > maxSignArea)
+        // FIX: Ignore shapes smaller than 500px OR shapes that are less than 30% the size of the main sign!
+        // This effortlessly filters out the small supplementary arrow plates.
+        if (area < 500.0 || area > maxSignArea || area < (largestArea * 0.30))
             continue;
 
         cv::Rect boundingBox = cv::boundingRect(contour);
 
-        // 2. Horizon Filter: Ignore bottom 30% of the screen (car hood/road)
-        if (boundingBox.y > outputImage.rows * 0.70)
+        if (boundingBox.y > outputImage.rows * 0.90)
             continue;
 
-        // 3. Aspect Ratio: Diamonds fit in a 1:1 square
         double aspectRatio = (double)boundingBox.width / boundingBox.height;
-        if (aspectRatio < 0.75 || aspectRatio > 1.25)
+        if (aspectRatio < 0.2 || aspectRatio > 3.0)
             continue;
 
-        double perimeter = cv::arcLength(contour, true);
-        double epsilon = 0.03 * perimeter; // 3% smoothing for sharp 4-point corners
+        // Warning signs are convex diamonds; supplementary arrow plates can
+        // merge into one blob — approximate the hull so vertex count stays stable.
+        std::vector<cv::Point> hull;
+        cv::convexHull(contour, hull);
+        double hullPerimeter = cv::arcLength(hull, true);
+        double epsilon = 0.03 * hullPerimeter;
         std::vector<cv::Point> approxPolygon;
-        cv::approxPolyDP(contour, approxPolygon, epsilon, true);
+        cv::approxPolyDP(hull, approxPolygon, epsilon, true);
 
         int vertices = (int)approxPolygon.size();
 
-        // 4. Shape Heuristic: 4 sides for a diamond
-        if (vertices >= 4 && vertices <= 5)
+        if (vertices >= 3 && vertices <= 10)
         {
             cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(0, 255, 255), 3);
             cv::putText(outputImage, "WARNING SIGN",
@@ -115,26 +120,21 @@ void ShapeAnalyzer::detectInfoSign(const cv::Mat &binaryMask, cv::Mat &outputIma
     std::vector<cv::Vec4i> hierarchy;
     cv::findContours(binaryMask, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-    // Maximum allowed area (20% of the screen)
-    double maxSignArea = outputImage.rows * outputImage.cols * 0.20;
+    double maxSignArea = outputImage.rows * outputImage.cols * 0.95;
 
     for (const auto &contour : contours)
     {
         double area = cv::contourArea(contour);
-
-        // 1. Min/Max Area Filter
-        if (area < 300.0 || area > maxSignArea)
+        if (area < 1000.0 || area > maxSignArea)
             continue;
 
         cv::Rect boundingBox = cv::boundingRect(contour);
-
-        // 2. Horizon Filter: Ignore bottom 30% of the screen
-        if (boundingBox.y > outputImage.rows * 0.70)
+        if (boundingBox.y > outputImage.rows * 0.85)
             continue;
 
-        // 3. Aspect Ratio: Info signs are wide or tall rectangles
+        // FIX: Allow wide highway signs and tall parking signs
         double aspectRatio = (double)boundingBox.width / boundingBox.height;
-        if (aspectRatio < 0.5 || aspectRatio > 4.0)
+        if (aspectRatio < 0.4 || aspectRatio > 4.0)
             continue;
 
         double perimeter = cv::arcLength(contour, true);
@@ -144,7 +144,6 @@ void ShapeAnalyzer::detectInfoSign(const cv::Mat &binaryMask, cv::Mat &outputIma
 
         int vertices = (int)approxPolygon.size();
 
-        // 4. Shape Heuristic: 4 sides for a rectangle
         if (vertices >= 4 && vertices <= 5)
         {
             cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(255, 100, 0), 3);

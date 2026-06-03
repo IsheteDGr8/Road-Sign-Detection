@@ -9,14 +9,15 @@ int main()
     ShapeAnalyzer analyzer;
     cv::Mat frame, redMask, yellowMask, blueMask;
 
-    std::cout << "--- STARTING STATIC IMAGE TESTS ---" << std::endl;
-    std::cout << "Press any key on the image window to move to the next one." << std::endl;
+    // Screen size controls
+    const int STATIC_WIDTH = 400;
+    const int VIDEO_WIDTH = 600;
 
-    // --- 1. STATIC RED SIGN ---
+    // 1. STATIC RED SIGN
     frame = cv::imread("data/stop_sign_2.jpg");
     if (!frame.empty())
     {
-        cv::resize(frame, frame, cv::Size(600, (int)(frame.rows * (600.0 / frame.cols))));
+        cv::resize(frame, frame, cv::Size(STATIC_WIDTH, (int)(frame.rows * ((double)STATIC_WIDTH / frame.cols))));
         redMask = segmenter.getStaticRedMask(frame);
         analyzer.detectRedSigns(redMask, frame);
         cv::imshow("Static Demo - Red Sign", frame);
@@ -28,7 +29,7 @@ int main()
     frame = cv::imread("data/pedestrian_crossing_sign_2.jpg");
     if (!frame.empty())
     {
-        cv::resize(frame, frame, cv::Size(600, (int)(frame.rows * (600.0 / frame.cols))));
+        cv::resize(frame, frame, cv::Size(STATIC_WIDTH, (int)(frame.rows * ((double)STATIC_WIDTH / frame.cols))));
         yellowMask = segmenter.getStaticYellowMask(frame);
         analyzer.detectWarningSign(yellowMask, frame);
         cv::imshow("Static Demo - Yellow Sign", frame);
@@ -40,7 +41,7 @@ int main()
     frame = cv::imread("data/disabled_parking_sign_1.jpg");
     if (!frame.empty())
     {
-        cv::resize(frame, frame, cv::Size(600, (int)(frame.rows * (600.0 / frame.cols))));
+        cv::resize(frame, frame, cv::Size(STATIC_WIDTH, (int)(frame.rows * ((double)STATIC_WIDTH / frame.cols))));
         blueMask = segmenter.getStaticBlueMask(frame);
         analyzer.detectInfoSign(blueMask, frame);
         cv::imshow("Static Demo - Blue Sign", frame);
@@ -52,7 +53,6 @@ int main()
     std::cout << "Press ESC on the video window to exit." << std::endl;
 
     // --- 4. DASHCAM VIDEO ---
-    // Make sure your video is named this, or change the path!
     cv::VideoCapture cap("data/dashcam.mp4");
 
     if (!cap.isOpened())
@@ -73,7 +73,7 @@ int main()
             break;
         }
 
-        cv::resize(frame, frame, cv::Size(800, (int)(frame.rows * (800.0 / frame.cols))));
+        cv::resize(frame, frame, cv::Size(VIDEO_WIDTH, (int)(frame.rows * ((double)VIDEO_WIDTH / frame.cols))));
 
         // Get Masks
         redMask = segmenter.getStaticRedMask(frame);
@@ -88,8 +88,10 @@ int main()
         // Telemetry HUD
         int64 endTick = cv::getTickCount();
         fps = cv::getTickFrequency() / (endTick - startTick);
+
+        // Slightly scaled down the font size for the smaller video window
         cv::putText(frame, "FPS: " + std::to_string((int)fps), cv::Point(10, 30),
-                    cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
+                    cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
 
         cv::imshow("Video Demo - Live Dashcam", frame);
 
