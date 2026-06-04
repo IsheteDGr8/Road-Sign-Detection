@@ -90,7 +90,7 @@ void ShapeAnalyzer::detectWarningSign(const cv::Mat &binaryMask, cv::Mat &output
             continue;
 
         double aspectRatio = (double)boundingBox.width / boundingBox.height;
-        if (aspectRatio < 0.2 || aspectRatio > 3.0)
+        if (aspectRatio < 0.3 || aspectRatio > 1.8)
             continue;
 
         // Warning signs are convex diamonds; supplementary arrow plates can
@@ -106,8 +106,19 @@ void ShapeAnalyzer::detectWarningSign(const cv::Mat &binaryMask, cv::Mat &output
 
         if (vertices >= 3 && vertices <= 10)
         {
+            // Ask the Micro-Detector what icon is inside!
+            int iconID = classifyWarningIcon(outputImage, boundingBox);
+
+            std::string signLabel = "WARNING SIGN";
+            if (iconID == 1)
+                signLabel = "PEDESTRIAN";
+            else if (iconID == 2)
+                signLabel = "ANIMAL";
+            else if (iconID == 3)
+                signLabel = "BICYCLE";
+
             cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(0, 255, 255), 3);
-            cv::putText(outputImage, "WARNING SIGN",
+            cv::putText(outputImage, signLabel,
                         cv::Point(boundingBox.x, boundingBox.y - 10),
                         cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(0, 255, 255), 2);
         }
@@ -152,4 +163,79 @@ void ShapeAnalyzer::detectInfoSign(const cv::Mat &binaryMask, cv::Mat &outputIma
                         cv::FONT_HERSHEY_SIMPLEX, 0.8, cv::Scalar(255, 100, 0), 2);
         }
     }
+}
+
+int ShapeAnalyzer::classifyWarningIcon(const cv::Mat &bgrImage, const cv::Rect &boundingBox) const
+{
+    // --- 1. THE BORDER CROP FIX ---
+    // Shrink the bounding box by 15% on all sides to throw away the black border.
+    int marginX = boundingBox.width * 0.15;
+    int marginY = boundingBox.height * 0.15;
+    cv::Rect innerBox(
+        boundingBox.x + marginX,
+        boundingBox.y + marginY,
+        boundingBox.width - (2 * marginX),
+        boundingBox.height - (2 * marginY));
+
+    // Safety check to keep the new box strictly inside the image bounds
+    innerBox &= cv::Rect(0, 0, bgrImage.cols, bgrImage.rows);
+    if (innerBox.empty() || innerBox.width < 10 || innerBox.height < 10)
+        return 0;
+
+    // --- 2. ISOLATE THE ICON ---
+    cv::Mat roi = bgrImage(innerBox);
+    cv::Mat hsvRoi, darkMask;
+    cv::cvtColor(roi, hsvRoi, cv::COLOR_BGR2HSV);
+    cv::inRange(hsvRoi, cv::Scalar(0, 0, 0), cv::Scalar(180, 140, 135), darkMask);
+
+    double darkAreaRatio = (double)cv::countNonZero(darkMask) / (darkMask.rows * darkMask.cols);
+
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(darkMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+    cv::Rect combinedDarkBox;
+    for (const auto &contour : contours)
+    {
+        cv::Rect box = cv::boundingRect(contour);
+        if (box.area() < 15)
+            continue; // Ignore tiny pixel noise
+        combinedDarkBox = combinedDarkBox.empty() ? box : (combinedDarkBox | box);
+    }
+
+    if (combinedDarkBox.empty())
+        return 0;
+
+    // --- 3. GEOMETRIC CLASSIFICATION ---
+    double shapeRatio = (double)combinedDarkBox.height / std::max(1, combinedDarkBox.width);
+    double wideRatio = (double)combinedDarkBox.width / std::max(1, combinedDarkBox.height);
+
+    // TEST 1: Bicycle (HoughCircles)
+    // Run this first, but with a stricter param2 (15.0) so it demands perfect circles (wheels)
+    cv::Mat blurred;
+    cv::GaussianBlur(darkMask, blurred, cv::Size(7, 7), 1.5);
+    std::vector<cv::Vec3f> circles;
+    cv::HoughCircles(blurred, circles, cv::HOUGH_GRADIENT, 1.2,
+                     std::max(12, darkMask.cols / 5), 100.0, 15.0,
+                     std::max(3, darkMask.cols / 20), std::max(8, darkMask.cols / 4));
+
+    if (circles.size() >= 2)
+    {
+        return 3; // Bicycle
+    }
+
+    // TEST 2: Pedestrian (Tall)
+    // Relaxed to 1.3. A walking person is taller than they are wide.
+    if (shapeRatio > 1.3)
+    {
+        return 1; // Pedestrian
+    }
+
+    // TEST 3: Animal (Wide)
+    // Relaxed to 1.2. A leaping deer is clearly wider than it is tall.
+    if (wideRatio > 1.2 && darkAreaRatio > 0.05)
+    {
+        return 2; // Animal
+    }
+
+    return 0; // Generic Warning Sign
 }

@@ -37,6 +37,42 @@ int main()
         cv::destroyAllWindows();
     }
 
+    // --- 2.1 STATIC YELLOW SIGN ---
+    frame = cv::imread("data/bicycle_crossing_sign_2.jpg");
+    if (!frame.empty())
+    {
+        cv::resize(frame, frame, cv::Size(STATIC_WIDTH, (int)(frame.rows * ((double)STATIC_WIDTH / frame.cols))));
+        yellowMask = segmenter.getStaticYellowMask(frame);
+        analyzer.detectWarningSign(yellowMask, frame);
+        cv::imshow("Static Demo - Yellow Sign", frame);
+        cv::waitKey(0);
+        cv::destroyAllWindows();
+    }
+
+    // --- 2.2 STATIC YELLOW SIGN ---
+    frame = cv::imread("data/animal_crossing_sign_2.jpg");
+    if (!frame.empty())
+    {
+        cv::resize(frame, frame, cv::Size(STATIC_WIDTH, (int)(frame.rows * ((double)STATIC_WIDTH / frame.cols))));
+        yellowMask = segmenter.getStaticYellowMask(frame);
+        analyzer.detectWarningSign(yellowMask, frame);
+        cv::imshow("Static Demo - Yellow Sign", frame);
+        cv::waitKey(0);
+        cv::destroyAllWindows();
+    }
+
+    // --- 2.3 STATIC YELLOW SIGN ---
+    frame = cv::imread("data/keep_right_sign_1.jpg");
+    if (!frame.empty())
+    {
+        cv::resize(frame, frame, cv::Size(STATIC_WIDTH, (int)(frame.rows * ((double)STATIC_WIDTH / frame.cols))));
+        yellowMask = segmenter.getStaticYellowMask(frame);
+        analyzer.detectWarningSign(yellowMask, frame);
+        cv::imshow("Static Demo - Yellow Sign", frame);
+        cv::waitKey(0);
+        cv::destroyAllWindows();
+    }
+
     // --- 3. STATIC BLUE SIGN ---
     frame = cv::imread("data/disabled_parking_sign_1.jpg");
     if (!frame.empty())

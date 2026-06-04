@@ -19,4 +19,8 @@ public:
     void detectRedSigns(const cv::Mat &binaryMask, cv::Mat &outputImage) const;
     void detectWarningSign(const cv::Mat &binaryMask, cv::Mat &outputImage) const;
     void detectInfoSign(const cv::Mat &binaryMask, cv::Mat &outputImage) const;
+
+private:
+    // Helper to inspect the inside of a yellow diamond
+    int classifyWarningIcon(const cv::Mat &bgrImage, const cv::Rect &boundingBox) const;
 };
