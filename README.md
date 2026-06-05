@@ -56,7 +56,7 @@ Runs in order; press any key to advance through still images, **ESC** to stop vi
 | 3 | `data/service signs/` | Blue rectangles |
 | 4 | `data/warning signs/` | Yellow diamonds |
 | 5 | `data/regulatory signs/` | Stop, do not enter, speed limit (subset of images) |
-| 6 | `data/dashcam_signs.mp4`, `data/dashcam_stop_sign.mp4` | Live detection on video |
+| 6 | `data/dashcam.mp4` | Live detection on video |
 
 ## Optional: Python batch tests
 

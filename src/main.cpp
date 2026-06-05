@@ -10,9 +10,31 @@
 #include "../include/ShapeAnalyzer.h"
 namespace fs = std::filesystem;
 
+static bool hasSignData(const fs::path &root)
+{
+    if (!fs::exists(root))
+        return false;
+
+    const char *folders[] = {"construction signs", "guide signs", "warning signs",
+                             "service signs", "regulatory signs"};
+    for (const char *name : folders)
+    {
+        if (fs::exists(root / name))
+            return true;
+    }
+
+    return fs::exists(root / "dashcam.mp4");
+}
+
 static fs::path dataRoot()
 {
     const fs::path candidates[] = {"data", "build/data"};
+    for (const auto &candidate : candidates)
+    {
+        if (hasSignData(candidate))
+            return candidate;
+    }
+
     for (const auto &candidate : candidates)
     {
         if (fs::exists(candidate))
@@ -284,7 +306,7 @@ static bool runDashcamVideo(const fs::path &videoPath, ColorSegmenter &segmenter
 
 static void runDashcamVideoTests(ColorSegmenter &segmenter, ShapeAnalyzer &analyzer, int videoWidth)
 {
-    const char *videoNames[] = {"dashcam_signs.mp4", "dashcam_stop_sign.mp4"};
+    const char *videoNames[] = {"dashcam.mp4"};
     bool foundAny = false;
 
     std::cout << "--- STARTING VIDEO DEMO ---" << std::endl;
@@ -308,7 +330,7 @@ static void runDashcamVideoTests(ColorSegmenter &segmenter, ShapeAnalyzer &analy
     if (!foundAny)
     {
         std::cerr << "No dashcam videos found under " << dataRoot().string()
-                  << "/ (expected dashcam_signs.mp4, dashcam_stop_sign.mp4)" << std::endl;
+                  << "/ (expected dashcam.mp4)" << std::endl;
     }
 
     cv::destroyAllWindows();
@@ -321,6 +343,14 @@ int main()
 
     const int STATIC_WIDTH = 400;
     const int VIDEO_WIDTH = 600;
+
+    std::cout << "Using data folder: " << fs::absolute(dataRoot()).string() << std::endl;
+    if (!hasSignData(dataRoot()))
+    {
+        std::cerr << "No sign images or videos found. Put test data under data/ or build/data/."
+                  << std::endl;
+        return 1;
+    }
 
     runConstructionFolderTests(segmenter, analyzer, STATIC_WIDTH);
     runGuideFolderTests(segmenter, analyzer, STATIC_WIDTH);
