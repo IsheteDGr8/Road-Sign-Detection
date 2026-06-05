@@ -1,0 +1,16 @@
+# Test image sources (Wikimedia Commons, freely licensed)
+#
+# Naming convention:
+#   <sign_type>_sign_N.jpg  — road sign test images
+#   dashcam_*.mp4           — dashcam clips (team-recorded or licensed stock)
+#
+# stop_sign_1.jpg              https://commons.wikimedia.org/wiki/File:Stop_road_sign_in_Italy.jpg
+# speed_limit_sign_1.jpg       https://commons.wikimedia.org/wiki/File:Zone_30.jpg
+# no_entry_sign_1.jpg          https://commons.wikimedia.org/wiki/File:No_entry_sign.jpg
+# falling_rocks_sign_1.jpg     https://commons.wikimedia.org/wiki/File:Falling_rocks_sign.jpg
+# road_narrows_sign_1.jpg      https://commons.wikimedia.org/wiki/File:UK_traffic_sign_517.svg
+# pedestrian_crossing_sign_1.jpg https://commons.wikimedia.org/wiki/File:Diagrams_of_signalised_pedestrian_crossing_warning_road_signs_19.jpg
+# bicycle_crossing_sign_1.jpg  https://commons.wikimedia.org/wiki/File:UK_traffic_sign_950.svg
+# animal_crossing_sign_1.jpg   https://commons.wikimedia.org/wiki/File:Animal_crossing_sign.jpg
+#
+# See build/data/SOURCES.txt for the full list bundled with the submission copy.

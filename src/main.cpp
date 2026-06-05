@@ -1,9 +1,13 @@
+// main.cpp
+// Runs still-image tests by sign category, then plays dashcam clips.
+// Author: Ishaan
+//
+// Needs OpenCV 4 only. Run from the project root so data/ is found.
 #include <iostream>
 #include <filesystem>
 #include <opencv2/opencv.hpp>
 #include "../include/ColorSegmenter.h"
 #include "../include/ShapeAnalyzer.h"
-
 namespace fs = std::filesystem;
 
 static fs::path dataRoot()
@@ -220,34 +224,20 @@ static void runGuideFolderTests(ColorSegmenter &segmenter, ShapeAnalyzer &analyz
     }
 }
 
-int main()
+static bool runDashcamVideo(const fs::path &videoPath, ColorSegmenter &segmenter, ShapeAnalyzer &analyzer,
+                            int videoWidth)
 {
-    ColorSegmenter segmenter;
-    ShapeAnalyzer analyzer;
-    cv::Mat frame, redMask, yellowMask, blueMask, whiteMask;
-
-    const int STATIC_WIDTH = 400;
-    const int VIDEO_WIDTH = 600;
-
-    runConstructionFolderTests(segmenter, analyzer, STATIC_WIDTH);
-    runGuideFolderTests(segmenter, analyzer, STATIC_WIDTH);
-    runServiceFolderTests(segmenter, analyzer, STATIC_WIDTH);
-    runWarningFolderTests(segmenter, analyzer, STATIC_WIDTH);
-    runRegulatoryFolderTests(segmenter, analyzer, STATIC_WIDTH);
-
-    std::cout << "--- STARTING VIDEO DEMO ---" << std::endl;
-    std::cout << "Press ESC on the video window to exit." << std::endl;
-
-    const std::string dashcamPath = (dataRoot() / "dashcam.mp4").string();
-    cv::VideoCapture cap(dashcamPath);
+    cv::VideoCapture cap(videoPath.string());
     if (!cap.isOpened())
     {
-        std::cerr << "Video failed to load: " << dashcamPath << std::endl;
-        std::cerr << "Place dashcam.mp4 under data/ (project root) and run from the project folder." << std::endl;
-        return -1;
+        std::cerr << "Video failed to load: " << videoPath.string() << std::endl;
+        return false;
     }
 
+    cv::Mat frame, redMask, yellowMask, blueMask, whiteMask;
+    const std::string windowTitle = "Video Demo - " + videoPath.filename().string();
     double fps = 0.0;
+
     while (true)
     {
         int64 startTick = cv::getTickCount();
@@ -255,11 +245,12 @@ int main()
 
         if (frame.empty())
         {
-            std::cout << "Video finished." << std::endl;
+            std::cout << "Finished: " << videoPath.filename().string() << std::endl;
             break;
         }
 
-        cv::resize(frame, frame, cv::Size(VIDEO_WIDTH, (int)(frame.rows * ((double)VIDEO_WIDTH / frame.cols))));
+        cv::resize(frame, frame,
+                   cv::Size(videoWidth, static_cast<int>(frame.rows * (static_cast<double>(videoWidth) / frame.cols))));
 
         redMask = segmenter.getStaticRedMask(frame);
         yellowMask = segmenter.getStaticYellowMask(frame);
@@ -273,16 +264,70 @@ int main()
         int64 endTick = cv::getTickCount();
         fps = cv::getTickFrequency() / (endTick - startTick);
 
-        cv::putText(frame, "FPS: " + std::to_string((int)fps), cv::Point(10, 30),
+        cv::putText(frame, "FPS: " + std::to_string(static_cast<int>(fps)), cv::Point(10, 30),
                     cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(0, 255, 0), 2);
 
-        cv::imshow("Video Demo - Live Dashcam", frame);
+        cv::imshow(windowTitle, frame);
 
         if (cv::waitKey(30) == 27)
-            break;
+        {
+            cap.release();
+            cv::destroyWindow(windowTitle);
+            return true;
+        }
     }
 
     cap.release();
+    cv::destroyWindow(windowTitle);
+    return false;
+}
+
+static void runDashcamVideoTests(ColorSegmenter &segmenter, ShapeAnalyzer &analyzer, int videoWidth)
+{
+    const char *videoNames[] = {"dashcam_signs.mp4", "dashcam_stop_sign.mp4"};
+    bool foundAny = false;
+
+    std::cout << "--- STARTING VIDEO DEMO ---" << std::endl;
+    std::cout << "Press ESC on a video window to skip remaining clips." << std::endl;
+
+    for (const char *name : videoNames)
+    {
+        const fs::path videoPath = dataRoot() / name;
+        if (!fs::exists(videoPath))
+        {
+            std::cerr << "Skipping missing video: " << videoPath.string() << std::endl;
+            continue;
+        }
+
+        foundAny = true;
+        std::cout << "Playing: " << name << std::endl;
+        if (runDashcamVideo(videoPath, segmenter, analyzer, videoWidth))
+            break;
+    }
+
+    if (!foundAny)
+    {
+        std::cerr << "No dashcam videos found under " << dataRoot().string()
+                  << "/ (expected dashcam_signs.mp4, dashcam_stop_sign.mp4)" << std::endl;
+    }
+
     cv::destroyAllWindows();
+}
+
+int main()
+{
+    ColorSegmenter segmenter;
+    ShapeAnalyzer analyzer;
+
+    const int STATIC_WIDTH = 400;
+    const int VIDEO_WIDTH = 600;
+
+    runConstructionFolderTests(segmenter, analyzer, STATIC_WIDTH);
+    runGuideFolderTests(segmenter, analyzer, STATIC_WIDTH);
+    runServiceFolderTests(segmenter, analyzer, STATIC_WIDTH);
+    runWarningFolderTests(segmenter, analyzer, STATIC_WIDTH);
+    runRegulatoryFolderTests(segmenter, analyzer, STATIC_WIDTH);
+    runDashcamVideoTests(segmenter, analyzer, VIDEO_WIDTH);
+
     return 0;
 }

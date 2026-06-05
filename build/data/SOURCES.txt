@@ -1,5 +1,4 @@
 # Test image sources (Wikimedia Commons, freely licensed)
-# Re-download: scripts\download_test_data.bat
 #
 # Naming convention:
 #   traffic_light_N.jpg|png  — traffic light test images (N = 1..4)

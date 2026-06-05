@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.15)
 project(SignDetector CXX)
 
-# Enforce C++ 17 standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Tell CMake EXACTLY where OpenCV lives (use forward slashes!)
-set(OpenCV_DIR "C:/opencv/build")
+# Only dependency: OpenCV 4. Change this path if your install differs.
+if(NOT OpenCV_DIR)
+    set(OpenCV_DIR "C:/opencv/build")
+endif()
 
 # Locate OpenCV installation
 find_package(OpenCV REQUIRED)

@@ -1,7 +1,5 @@
-/**
- * @file ShapeAnalyzer.cpp
- * @brief Implements contour extraction and polygon approximation logic.
- */
+// ShapeAnalyzer.cpp — contour/shape checks and speed-limit digit reading.
+// Author: Ishaan
 #include "../include/ShapeAnalyzer.h"
 #include <algorithm>
 #include <string>
@@ -365,7 +363,7 @@ void ShapeAnalyzer::detectRegulatorySigns(const cv::Mat &bgrImage, const cv::Mat
     std::vector<cv::Rect> claimedBoxes;
     const double maxSignArea = outputImage.rows * outputImage.cols * 0.95;
 
-    // 1) Speed limit: tall white rectangles + digit OCR
+    // Speed limits first (white panel + two digits).
     {
         struct SpeedLimitCandidate
         {
@@ -424,7 +422,7 @@ void ShapeAnalyzer::detectRegulatorySigns(const cv::Mat &bgrImage, const cv::Mat
         }
     }
 
-    // 2) Red signs: stop octagon vs do-not-enter circle
+    // Red signs: octagon = stop, white bar inside = do not enter.
     {
         std::vector<std::vector<cv::Point>> contours;
         cv::findContours(redMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
@@ -515,8 +513,7 @@ void ShapeAnalyzer::detectWarningSign(const cv::Mat &binaryMask, cv::Mat &output
 
         int vertices = (int)approxPolygon.size();
 
-        // Yellow warning signs are diamonds (4 hull vertices); allow 5 when a
-        // supplementary plate merges with the main diamond in the mask.
+        // Diamond = warning. Sometimes get 5 verts if a small plate merges in.
         if (vertices == 4 || vertices == 5)
         {
             cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(0, 255, 255), 3);
@@ -566,7 +563,6 @@ void ShapeAnalyzer::detectConstructionSign(const cv::Mat &binaryMask, cv::Mat &o
 
         int vertices = (int)approxPolygon.size();
 
-        // Orange highway signs are diamond-shaped (4 hull vertices).
         if (vertices == 4)
         {
             cv::rectangle(outputImage, boundingBox.tl(), boundingBox.br(), cv::Scalar(0, 140, 255), 3);

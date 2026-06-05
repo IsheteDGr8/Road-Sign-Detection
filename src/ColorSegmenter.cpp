@@ -1,8 +1,5 @@
-/**
- * @file ColorSegmenter.cpp
- * @brief Implements HSV color masking and interactive tuning logic.
- * @author Ishaan
- */
+// ColorSegmenter.cpp — HSV masking and the slider tuning windows.
+// Author: Ishaan
 #include "../include/ColorSegmenter.h"
 #include <algorithm>
 #include <iostream>
@@ -10,7 +7,6 @@
 
 namespace
 {
-    // --- RED CONTEXT (Dual Mask) ---
     struct TunerContext
     {
         cv::Mat hsvImage;
@@ -43,7 +39,6 @@ namespace
         cv::imshow("Filtered Mask Result", combinedMask);
     }
 
-    // --- YELLOW/BLUE CONTEXT (Single Mask) ---
     struct SingleColorContext
     {
         cv::Mat hsvImage;
@@ -77,15 +72,12 @@ namespace
     }
 }
 
-// --- CLASS METHODS ---
-
 void ColorSegmenter::tuneRedMask(const std::string &imagePath) const
 {
     cv::Mat rawImage = cv::imread(imagePath);
     if (rawImage.empty())
         return;
 
-    // Standardize the width to 600 pixels while keeping the correct aspect ratio
     int targetWidth = 600;
     int targetHeight = (int)(rawImage.rows * ((double)targetWidth / rawImage.cols));
     cv::resize(rawImage, rawImage, cv::Size(targetWidth, targetHeight));
@@ -124,7 +116,6 @@ void ColorSegmenter::tuneYellowMask(const std::string &imagePath) const
     if (rawImage.empty())
         return;
 
-    // Standardize the width to 600 pixels while keeping the correct aspect ratio
     int targetWidth = 600;
     int targetHeight = (int)(rawImage.rows * ((double)targetWidth / rawImage.cols));
     cv::resize(rawImage, rawImage, cv::Size(targetWidth, targetHeight));
@@ -133,7 +124,6 @@ void ColorSegmenter::tuneYellowMask(const std::string &imagePath) const
     cv::GaussianBlur(rawImage, blurredImage, cv::Size(5, 5), 0);
 
     static SingleColorContext context;
-    // Pre-load estimated Yellow boundaries
     context.lowerH = 15;
     context.upperH = 35;
     cv::cvtColor(blurredImage, context.hsvImage, cv::COLOR_BGR2HSV);
@@ -164,7 +154,6 @@ void ColorSegmenter::tuneBlueMask(const std::string &imagePath) const
     if (rawImage.empty())
         return;
 
-    // Standardize the width to 600 pixels while keeping the correct aspect ratio
     int targetWidth = 600;
     int targetHeight = (int)(rawImage.rows * ((double)targetWidth / rawImage.cols));
     cv::resize(rawImage, rawImage, cv::Size(targetWidth, targetHeight));
@@ -173,7 +162,6 @@ void ColorSegmenter::tuneBlueMask(const std::string &imagePath) const
     cv::GaussianBlur(rawImage, blurredImage, cv::Size(5, 5), 0);
 
     static SingleColorContext context;
-    // Pre-load estimated Blue boundaries
     context.lowerH = 90;
     context.upperH = 130;
     cv::cvtColor(blurredImage, context.hsvImage, cv::COLOR_BGR2HSV);
@@ -194,7 +182,7 @@ void ColorSegmenter::tuneBlueMask(const std::string &imagePath) const
     updateSingleMask(0, &context);
     while (cv::waitKey(10) != 27)
     {
-    } // 27 is the ESC key
+    }
     cv::destroyAllWindows();
 }
 
@@ -223,7 +211,6 @@ cv::Mat ColorSegmenter::getStaticYellowMask(const cv::Mat &inputImage) const
     cv::cvtColor(blurredImage, hsvImage, cv::COLOR_BGR2HSV);
 
     cv::Mat mask;
-    // Values extracted from pedestrian crossing tuning
     cv::inRange(hsvImage, cv::Scalar(15, 100, 100), cv::Scalar(35, 255, 255), mask);
 
     cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
@@ -240,7 +227,7 @@ cv::Mat ColorSegmenter::getStaticBlueMask(const cv::Mat &inputImage) const
     cv::cvtColor(blurredImage, hsvImage, cv::COLOR_BGR2HSV);
 
     cv::Mat mask;
-    // Higher min saturation keeps pale sky out of scene photos.
+    // Bump min saturation so pale sky doesn't count as blue.
     cv::inRange(hsvImage, cv::Scalar(90, 80, 50), cv::Scalar(130, 255, 255), mask);
 
     cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
@@ -257,7 +244,6 @@ cv::Mat ColorSegmenter::getStaticOrangeMask(const cv::Mat &inputImage) const
     cv::cvtColor(blurredImage, hsvImage, cv::COLOR_BGR2HSV);
 
     cv::Mat mask;
-    // Orange sits between red and yellow; wider range handles reflective construction paint
     cv::inRange(hsvImage, cv::Scalar(3, 100, 80), cv::Scalar(25, 255, 255), mask);
 
     cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
@@ -274,7 +260,6 @@ cv::Mat ColorSegmenter::getStaticGreenMask(const cv::Mat &inputImage) const
     cv::cvtColor(blurredImage, hsvImage, cv::COLOR_BGR2HSV);
 
     cv::Mat mask;
-    // Highway guide green (Hue roughly 35–85)
     cv::inRange(hsvImage, cv::Scalar(35, 100, 50), cv::Scalar(85, 255, 255), mask);
 
     cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
@@ -292,7 +277,6 @@ cv::Mat ColorSegmenter::getStaticWhiteMask(const cv::Mat &inputImage) const
     cv::cvtColor(blurredImage, hsvImage, cv::COLOR_BGR2HSV);
 
     cv::Mat whiteMask, redMask1, redMask2, redMask, cleanedMask;
-    // Bright sign faces: grayscale works better than HSV on reflective white panels
     cv::inRange(grayImage, 175, 255, whiteMask);
 
     cv::inRange(hsvImage, cv::Scalar(0, 120, 70), cv::Scalar(10, 255, 255), redMask1);
@@ -347,7 +331,7 @@ cv::Mat ColorSegmenter::getStaticWhiteMask(const cv::Mat &inputImage) const
         largestEligibleArea = std::max(largestEligibleArea, candidate.area);
     }
 
-    // Close-up speed-limit photo: one dominant white rectangle
+    // One big white panel (close-up speed limit shot).
     if (largestArea > frameArea * 0.20)
     {
         cv::drawContours(cleanedMask, std::vector<std::vector<cv::Point>>{candidates.front().contour},
@@ -355,7 +339,7 @@ cv::Mat ColorSegmenter::getStaticWhiteMask(const cv::Mat &inputImage) const
         return cleanedMask;
     }
 
-    // Outdoor scene: keep upper sign panels; ignore road stripes when scaling area
+    // Street scene: keep sign-sized panels up top, ignore lane stripes below.
     const double referenceArea = std::max(largestEligibleArea, 1.0);
     for (const auto &candidate : candidates)
     {
