@@ -1,8 +1,14 @@
-// main.cpp
-// Runs still-image tests by sign category, then plays dashcam clips.
-// Author: Ishaan
-//
-// Needs OpenCV 4 only. Run from the project root so data/ is found.
+/*
+ * main.cpp
+ *
+ * Purpose: Demo entry point — still-image tests by sign type, then dashcam video.
+ * Authors: Ishaan, Manish
+ *
+ * Assumptions:
+ *   - OpenCV 4 is installed; no other libraries or external executables.
+ *   - Test images/videos live under data/ or build/data/ (see dataRoot()).
+ *   - Working directory is the project root when launched from Visual Studio.
+ */
 #include <iostream>
 #include <filesystem>
 #include <opencv2/opencv.hpp>
@@ -336,6 +342,9 @@ static void runDashcamVideoTests(ColorSegmenter &segmenter, ShapeAnalyzer &analy
     cv::destroyAllWindows();
 }
 
+// Purpose: Run folder-based sign demos, then play dashcam.mp4.
+// Pre-condition: data/ or build/data/ contains sign folders or dashcam.mp4.
+// Post-condition: Shows annotated images and video windows; returns 1 if no data found.
 int main()
 {
     ColorSegmenter segmenter;

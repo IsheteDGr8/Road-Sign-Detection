@@ -2,7 +2,7 @@
 
 Detects US-style road signs from still images and dashcam video using color masks and simple shape rules. Built for CSS 487 with **OpenCV 4 only** — no extra libraries, no bundled executables, no network calls.
 
-**Author:** Ishaan
+**Authors:** Ishaan, Manish
 
 ## What you need
 

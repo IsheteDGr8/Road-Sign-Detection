@@ -1,5 +1,13 @@
-// ColorSegmenter.cpp — HSV masking and the slider tuning windows.
-// Author: Ishaan
+/*
+ * ColorSegmenter.cpp
+ *
+ * Purpose: Implements HSV masking and optional slider tuning windows.
+ * Authors: Ishaan, Manish
+ *
+ * Assumptions:
+ *   - Same as ColorSegmenter.h.
+ *   - Gaussian blur (5x5) is applied before every mask pass.
+ */
 #include "../include/ColorSegmenter.h"
 #include <algorithm>
 #include <iostream>
@@ -72,6 +80,9 @@ namespace
     }
 }
 
+// Purpose: Interactive sliders to tune red HSV thresholds on one image.
+// Pre-condition: imagePath points to a readable image file.
+// Post-condition: Opens OpenCV windows; blocks until ESC; windows are closed.
 void ColorSegmenter::tuneRedMask(const std::string &imagePath) const
 {
     cv::Mat rawImage = cv::imread(imagePath);
@@ -79,7 +90,7 @@ void ColorSegmenter::tuneRedMask(const std::string &imagePath) const
         return;
 
     int targetWidth = 600;
-    int targetHeight = (int)(rawImage.rows * ((double)targetWidth / rawImage.cols));
+    int targetHeight = (int) (rawImage.rows * ((double) targetWidth / rawImage.cols));
     cv::resize(rawImage, rawImage, cv::Size(targetWidth, targetHeight));
 
     cv::Mat blurredImage;
@@ -110,6 +121,9 @@ void ColorSegmenter::tuneRedMask(const std::string &imagePath) const
     cv::destroyAllWindows();
 }
 
+// Purpose: Interactive sliders to tune yellow HSV thresholds on one image.
+// Pre-condition: imagePath points to a readable image file.
+// Post-condition: Opens OpenCV windows; blocks until ESC; windows are closed.
 void ColorSegmenter::tuneYellowMask(const std::string &imagePath) const
 {
     cv::Mat rawImage = cv::imread(imagePath);
@@ -117,7 +131,7 @@ void ColorSegmenter::tuneYellowMask(const std::string &imagePath) const
         return;
 
     int targetWidth = 600;
-    int targetHeight = (int)(rawImage.rows * ((double)targetWidth / rawImage.cols));
+    int targetHeight = (int) (rawImage.rows * ((double) targetWidth / rawImage.cols));
     cv::resize(rawImage, rawImage, cv::Size(targetWidth, targetHeight));
 
     cv::Mat blurredImage;
@@ -148,6 +162,9 @@ void ColorSegmenter::tuneYellowMask(const std::string &imagePath) const
     cv::destroyAllWindows();
 }
 
+// Purpose: Interactive sliders to tune blue HSV thresholds on one image.
+// Pre-condition: imagePath points to a readable image file.
+// Post-condition: Opens OpenCV windows; blocks until ESC; windows are closed.
 void ColorSegmenter::tuneBlueMask(const std::string &imagePath) const
 {
     cv::Mat rawImage = cv::imread(imagePath);
@@ -155,7 +172,7 @@ void ColorSegmenter::tuneBlueMask(const std::string &imagePath) const
         return;
 
     int targetWidth = 600;
-    int targetHeight = (int)(rawImage.rows * ((double)targetWidth / rawImage.cols));
+    int targetHeight = (int) (rawImage.rows * ((double) targetWidth / rawImage.cols));
     cv::resize(rawImage, rawImage, cv::Size(targetWidth, targetHeight));
 
     cv::Mat blurredImage;
@@ -186,6 +203,9 @@ void ColorSegmenter::tuneBlueMask(const std::string &imagePath) const
     cv::destroyAllWindows();
 }
 
+// Purpose: Red mask for stop / do-not-enter signs (wraps hue at 0 and 180).
+// Pre-condition: inputImage is non-empty BGR.
+// Post-condition: Returns 8-bit single-channel mask (255 = red pixel).
 cv::Mat ColorSegmenter::getStaticRedMask(const cv::Mat &inputImage) const
 {
     cv::Mat blurredImage, hsvImage;
@@ -204,6 +224,9 @@ cv::Mat ColorSegmenter::getStaticRedMask(const cv::Mat &inputImage) const
     return combinedMask;
 }
 
+// Purpose: Yellow mask for warning signs.
+// Pre-condition: inputImage is non-empty BGR.
+// Post-condition: Returns 8-bit single-channel mask (255 = yellow pixel).
 cv::Mat ColorSegmenter::getStaticYellowMask(const cv::Mat &inputImage) const
 {
     cv::Mat blurredImage, hsvImage;
@@ -220,6 +243,9 @@ cv::Mat ColorSegmenter::getStaticYellowMask(const cv::Mat &inputImage) const
     return mask;
 }
 
+// Purpose: Blue mask for service signs.
+// Pre-condition: inputImage is non-empty BGR.
+// Post-condition: Returns 8-bit single-channel mask (255 = blue pixel).
 cv::Mat ColorSegmenter::getStaticBlueMask(const cv::Mat &inputImage) const
 {
     cv::Mat blurredImage, hsvImage;
@@ -237,6 +263,9 @@ cv::Mat ColorSegmenter::getStaticBlueMask(const cv::Mat &inputImage) const
     return mask;
 }
 
+// Purpose: Orange mask for construction signs.
+// Pre-condition: inputImage is non-empty BGR.
+// Post-condition: Returns 8-bit single-channel mask (255 = orange pixel).
 cv::Mat ColorSegmenter::getStaticOrangeMask(const cv::Mat &inputImage) const
 {
     cv::Mat blurredImage, hsvImage;
@@ -253,6 +282,9 @@ cv::Mat ColorSegmenter::getStaticOrangeMask(const cv::Mat &inputImage) const
     return mask;
 }
 
+// Purpose: Green mask for guide signs.
+// Pre-condition: inputImage is non-empty BGR.
+// Post-condition: Returns 8-bit single-channel mask (255 = green pixel).
 cv::Mat ColorSegmenter::getStaticGreenMask(const cv::Mat &inputImage) const
 {
     cv::Mat blurredImage, hsvImage;
@@ -269,6 +301,9 @@ cv::Mat ColorSegmenter::getStaticGreenMask(const cv::Mat &inputImage) const
     return mask;
 }
 
+// Purpose: White mask for speed-limit panels (grayscale + red removed).
+// Pre-condition: inputImage is non-empty BGR.
+// Post-condition: Returns 8-bit single-channel mask (255 = white sign area).
 cv::Mat ColorSegmenter::getStaticWhiteMask(const cv::Mat &inputImage) const
 {
     cv::Mat blurredImage, grayImage, hsvImage;
@@ -325,7 +360,7 @@ cv::Mat ColorSegmenter::getStaticWhiteMask(const cv::Mat &inputImage) const
         if (centerY > inputImage.rows * 0.72)
             continue;
 
-        if ((double)candidate.boundingBox.width > candidate.boundingBox.height * 2.0)
+        if ((double) candidate.boundingBox.width > candidate.boundingBox.height * 2.0)
             continue;
 
         largestEligibleArea = std::max(largestEligibleArea, candidate.area);
@@ -350,7 +385,7 @@ cv::Mat ColorSegmenter::getStaticWhiteMask(const cv::Mat &inputImage) const
         if (centerY > inputImage.rows * 0.72)
             continue;
 
-        if ((double)candidate.boundingBox.width > candidate.boundingBox.height * 2.0)
+        if ((double) candidate.boundingBox.width > candidate.boundingBox.height * 2.0)
             continue;
 
         cv::drawContours(cleanedMask, std::vector<std::vector<cv::Point>>{candidate.contour},

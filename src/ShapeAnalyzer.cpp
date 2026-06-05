@@ -1,5 +1,13 @@
-// ShapeAnalyzer.cpp — contour/shape checks and speed-limit digit reading.
-// Author: Ishaan
+/*
+ * ShapeAnalyzer.cpp
+ *
+ * Purpose: Contour and shape checks, speed-limit digit reading, and on-frame labels.
+ * Authors: Ishaan, Manish
+ *
+ * Assumptions:
+ *   - Same as ShapeAnalyzer.h.
+ *   - Contour area and aspect-ratio gates reject most background blobs.
+ */
 #include "../include/ShapeAnalyzer.h"
 #include <algorithm>
 #include <string>
@@ -357,6 +365,9 @@ namespace
     }
 }
 
+// Purpose: Detect stop, do-not-enter, and speed-limit signs.
+// Pre-condition: bgrImage, redMask, whiteMask same size; outputImage is BGR.
+// Post-condition: Draws boxes and labels on outputImage for matches found.
 void ShapeAnalyzer::detectRegulatorySigns(const cv::Mat &bgrImage, const cv::Mat &redMask,
                                             const cv::Mat &whiteMask, cv::Mat &outputImage) const
 {
@@ -474,6 +485,9 @@ void ShapeAnalyzer::detectRegulatorySigns(const cv::Mat &bgrImage, const cv::Mat
 
 }
 
+// Purpose: Detect yellow diamond warning signs.
+// Pre-condition: binaryMask is 8-bit single-channel; outputImage is BGR.
+// Post-condition: Draws yellow boxes and "WARNING SIGN" on outputImage.
 void ShapeAnalyzer::detectWarningSign(const cv::Mat &binaryMask, cv::Mat &outputImage) const
 {
     std::vector<std::vector<cv::Point>> contours;
@@ -500,7 +514,7 @@ void ShapeAnalyzer::detectWarningSign(const cv::Mat &binaryMask, cv::Mat &output
         if (boundingBox.y > outputImage.rows * 0.90)
             continue;
 
-        double aspectRatio = (double)boundingBox.width / boundingBox.height;
+        double aspectRatio = (double) boundingBox.width / boundingBox.height;
         if (aspectRatio < 0.65 || aspectRatio > 1.35)
             continue;
 
@@ -511,7 +525,7 @@ void ShapeAnalyzer::detectWarningSign(const cv::Mat &binaryMask, cv::Mat &output
         std::vector<cv::Point> approxPolygon;
         cv::approxPolyDP(hull, approxPolygon, epsilon, true);
 
-        int vertices = (int)approxPolygon.size();
+        int vertices = (int) approxPolygon.size();
 
         // Diamond = warning. Sometimes get 5 verts if a small plate merges in.
         if (vertices == 4 || vertices == 5)
@@ -524,6 +538,9 @@ void ShapeAnalyzer::detectWarningSign(const cv::Mat &binaryMask, cv::Mat &output
     }
 }
 
+// Purpose: Detect orange diamond construction signs.
+// Pre-condition: binaryMask is 8-bit single-channel; outputImage is BGR.
+// Post-condition: Draws orange boxes and "CONSTRUCTION SIGN" on outputImage.
 void ShapeAnalyzer::detectConstructionSign(const cv::Mat &binaryMask, cv::Mat &outputImage) const
 {
     std::vector<std::vector<cv::Point>> contours;
@@ -550,7 +567,7 @@ void ShapeAnalyzer::detectConstructionSign(const cv::Mat &binaryMask, cv::Mat &o
         if (boundingBox.y > outputImage.rows * 0.90)
             continue;
 
-        double aspectRatio = (double)boundingBox.width / boundingBox.height;
+        double aspectRatio = (double) boundingBox.width / boundingBox.height;
         if (aspectRatio < 0.75 || aspectRatio > 1.25)
             continue;
 
@@ -561,7 +578,7 @@ void ShapeAnalyzer::detectConstructionSign(const cv::Mat &binaryMask, cv::Mat &o
         std::vector<cv::Point> approxPolygon;
         cv::approxPolyDP(hull, approxPolygon, epsilon, true);
 
-        int vertices = (int)approxPolygon.size();
+        int vertices = (int) approxPolygon.size();
 
         if (vertices == 4)
         {
@@ -573,6 +590,9 @@ void ShapeAnalyzer::detectConstructionSign(const cv::Mat &binaryMask, cv::Mat &o
     }
 }
 
+// Purpose: Detect green rectangular guide signs.
+// Pre-condition: binaryMask is 8-bit single-channel; outputImage is BGR.
+// Post-condition: Draws green boxes and "GUIDE SIGN" on outputImage.
 void ShapeAnalyzer::detectGuideSign(const cv::Mat &binaryMask, cv::Mat &outputImage) const
 {
     std::vector<std::vector<cv::Point>> contours;
@@ -592,7 +612,7 @@ void ShapeAnalyzer::detectGuideSign(const cv::Mat &binaryMask, cv::Mat &outputIm
         if (boundingBox.y > outputImage.rows * 0.85)
             continue;
 
-        double aspectRatio = (double)boundingBox.width / boundingBox.height;
+        double aspectRatio = (double) boundingBox.width / boundingBox.height;
         if (aspectRatio < 0.2 || aspectRatio > 5.0)
             continue;
 
@@ -603,7 +623,7 @@ void ShapeAnalyzer::detectGuideSign(const cv::Mat &binaryMask, cv::Mat &outputIm
         std::vector<cv::Point> approxPolygon;
         cv::approxPolyDP(hull, approxPolygon, epsilon, true);
 
-        int vertices = (int)approxPolygon.size();
+        int vertices = (int) approxPolygon.size();
 
         if (vertices >= 4 && vertices <= 6)
             candidates.emplace_back(area, boundingBox);
@@ -637,6 +657,9 @@ void ShapeAnalyzer::detectGuideSign(const cv::Mat &binaryMask, cv::Mat &outputIm
     }
 }
 
+// Purpose: Detect blue rectangular service signs.
+// Pre-condition: binaryMask is 8-bit single-channel; outputImage is BGR.
+// Post-condition: Draws blue boxes and "SERVICE SIGN" on outputImage.
 void ShapeAnalyzer::detectServiceSign(const cv::Mat &binaryMask, cv::Mat &outputImage) const
 {
     std::vector<std::vector<cv::Point>> contours;
@@ -656,7 +679,7 @@ void ShapeAnalyzer::detectServiceSign(const cv::Mat &binaryMask, cv::Mat &output
         if (boundingBox.y > outputImage.rows * 0.85)
             continue;
 
-        double aspectRatio = (double)boundingBox.width / boundingBox.height;
+        double aspectRatio = (double) boundingBox.width / boundingBox.height;
         if (aspectRatio < 0.2 || aspectRatio > 5.0)
             continue;
 
@@ -674,7 +697,7 @@ void ShapeAnalyzer::detectServiceSign(const cv::Mat &binaryMask, cv::Mat &output
         std::vector<cv::Point> approxPolygon;
         cv::approxPolyDP(hull, approxPolygon, epsilon, true);
 
-        int vertices = (int)approxPolygon.size();
+        int vertices = (int) approxPolygon.size();
 
         if (vertices >= 4 && vertices <= 6)
             candidates.emplace_back(area, boundingBox);

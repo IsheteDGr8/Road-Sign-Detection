@@ -333,7 +333,6 @@ if %errorlevel% neq 0 goto :VCEnd</Command>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="C:\Users\ishaa\OneDrive - UW\Spring 2026\CSS 487_Computer Vision\Road Sign Detection\src\ColorSegmenter.cpp" />
-    <ClCompile Include="C:\Users\ishaa\OneDrive - UW\Spring 2026\CSS 487_Computer Vision\Road Sign Detection\src\DecisionEngine.cpp" />
     <ClCompile Include="C:\Users\ishaa\OneDrive - UW\Spring 2026\CSS 487_Computer Vision\Road Sign Detection\src\ShapeAnalyzer.cpp" />
     <ClCompile Include="C:\Users\ishaa\OneDrive - UW\Spring 2026\CSS 487_Computer Vision\Road Sign Detection\src\main.cpp" />
   </ItemGroup>
