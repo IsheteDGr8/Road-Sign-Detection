@@ -12,15 +12,16 @@ public:
     ShapeAnalyzer() = default;
 
     /**
-     * @brief Detects octagons (Stop) and circles (Do Not Enter) from a red binary mask.
-     * @param binaryMask The isolated black-and-white image from the ColorSegmenter.
-     * @param outputImage The original BGR image where bounding boxes and labels will be drawn.
+     * @brief Classifies regulatory signs: stop, do-not-enter, speed limit, and generic.
+     * @param bgrImage Original color frame used for OCR and inner-sign checks.
+     * @param redMask Red segmentation mask.
+     * @param whiteMask White segmentation mask.
+     * @param outputImage Annotated output image.
      */
-    void detectRedSigns(const cv::Mat &binaryMask, cv::Mat &outputImage) const;
+    void detectRegulatorySigns(const cv::Mat &bgrImage, const cv::Mat &redMask,
+                               const cv::Mat &whiteMask, cv::Mat &outputImage) const;
     void detectWarningSign(const cv::Mat &binaryMask, cv::Mat &outputImage) const;
-    void detectInfoSign(const cv::Mat &binaryMask, cv::Mat &outputImage) const;
-
-private:
-    // Helper to inspect the inside of a yellow diamond
-    int classifyWarningIcon(const cv::Mat &bgrImage, const cv::Rect &boundingBox) const;
+    void detectConstructionSign(const cv::Mat &binaryMask, cv::Mat &outputImage) const;
+    void detectGuideSign(const cv::Mat &binaryMask, cv::Mat &outputImage) const;
+    void detectServiceSign(const cv::Mat &binaryMask, cv::Mat &outputImage) const;
 };

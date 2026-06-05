@@ -4,7 +4,9 @@
  * @author Ishaan
  */
 #include "../include/ColorSegmenter.h"
+#include <algorithm>
 #include <iostream>
+#include <vector>
 
 namespace
 {
@@ -238,12 +240,138 @@ cv::Mat ColorSegmenter::getStaticBlueMask(const cv::Mat &inputImage) const
     cv::cvtColor(blurredImage, hsvImage, cv::COLOR_BGR2HSV);
 
     cv::Mat mask;
-    // Values extracted from disabled parking tuning (Lower Hue corrected to 90)
-    cv::inRange(hsvImage, cv::Scalar(90, 61, 87), cv::Scalar(130, 255, 255), mask);
+    // Higher min saturation keeps pale sky out of scene photos.
+    cv::inRange(hsvImage, cv::Scalar(90, 80, 50), cv::Scalar(130, 255, 255), mask);
 
     cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
     cv::morphologyEx(mask, mask, cv::MORPH_OPEN, element);
     cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, element);
 
     return mask;
+}
+
+cv::Mat ColorSegmenter::getStaticOrangeMask(const cv::Mat &inputImage) const
+{
+    cv::Mat blurredImage, hsvImage;
+    cv::GaussianBlur(inputImage, blurredImage, cv::Size(5, 5), 0);
+    cv::cvtColor(blurredImage, hsvImage, cv::COLOR_BGR2HSV);
+
+    cv::Mat mask;
+    // Orange sits between red and yellow; wider range handles reflective construction paint
+    cv::inRange(hsvImage, cv::Scalar(3, 100, 80), cv::Scalar(25, 255, 255), mask);
+
+    cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+    cv::morphologyEx(mask, mask, cv::MORPH_OPEN, element);
+    cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, element);
+
+    return mask;
+}
+
+cv::Mat ColorSegmenter::getStaticGreenMask(const cv::Mat &inputImage) const
+{
+    cv::Mat blurredImage, hsvImage;
+    cv::GaussianBlur(inputImage, blurredImage, cv::Size(5, 5), 0);
+    cv::cvtColor(blurredImage, hsvImage, cv::COLOR_BGR2HSV);
+
+    cv::Mat mask;
+    // Highway guide green (Hue roughly 35–85)
+    cv::inRange(hsvImage, cv::Scalar(35, 100, 50), cv::Scalar(85, 255, 255), mask);
+
+    cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+    cv::morphologyEx(mask, mask, cv::MORPH_OPEN, element);
+    cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, element);
+
+    return mask;
+}
+
+cv::Mat ColorSegmenter::getStaticWhiteMask(const cv::Mat &inputImage) const
+{
+    cv::Mat blurredImage, grayImage, hsvImage;
+    cv::GaussianBlur(inputImage, blurredImage, cv::Size(5, 5), 0);
+    cv::cvtColor(blurredImage, grayImage, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(blurredImage, hsvImage, cv::COLOR_BGR2HSV);
+
+    cv::Mat whiteMask, redMask1, redMask2, redMask, cleanedMask;
+    // Bright sign faces: grayscale works better than HSV on reflective white panels
+    cv::inRange(grayImage, 175, 255, whiteMask);
+
+    cv::inRange(hsvImage, cv::Scalar(0, 120, 70), cv::Scalar(10, 255, 255), redMask1);
+    cv::inRange(hsvImage, cv::Scalar(170, 120, 70), cv::Scalar(180, 255, 255), redMask2);
+    cv::bitwise_or(redMask1, redMask2, redMask);
+    cv::bitwise_and(whiteMask, ~redMask, whiteMask);
+
+    cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(7, 7));
+    cv::morphologyEx(whiteMask, whiteMask, cv::MORPH_OPEN, element);
+    cv::morphologyEx(whiteMask, whiteMask, cv::MORPH_CLOSE, element);
+
+    cleanedMask = cv::Mat::zeros(whiteMask.size(), CV_8UC1);
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(whiteMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+    struct WhiteCandidate
+    {
+        double area;
+        cv::Rect boundingBox;
+        std::vector<cv::Point> contour;
+    };
+
+    std::vector<WhiteCandidate> candidates;
+    for (const auto &contour : contours)
+    {
+        double area = cv::contourArea(contour);
+        if (area < 250.0)
+            continue;
+
+        candidates.push_back({area, cv::boundingRect(contour), contour});
+    }
+
+    if (candidates.empty())
+        return cleanedMask;
+
+    std::sort(candidates.begin(), candidates.end(),
+              [](const WhiteCandidate &a, const WhiteCandidate &b) { return a.area > b.area; });
+
+    double frameArea = inputImage.rows * inputImage.cols;
+    double largestArea = candidates.front().area;
+
+    double largestEligibleArea = 0.0;
+    for (const auto &candidate : candidates)
+    {
+        double centerY = candidate.boundingBox.y + candidate.boundingBox.height / 2.0;
+        if (centerY > inputImage.rows * 0.72)
+            continue;
+
+        if ((double)candidate.boundingBox.width > candidate.boundingBox.height * 2.0)
+            continue;
+
+        largestEligibleArea = std::max(largestEligibleArea, candidate.area);
+    }
+
+    // Close-up speed-limit photo: one dominant white rectangle
+    if (largestArea > frameArea * 0.20)
+    {
+        cv::drawContours(cleanedMask, std::vector<std::vector<cv::Point>>{candidates.front().contour},
+                         -1, cv::Scalar(255), cv::FILLED);
+        return cleanedMask;
+    }
+
+    // Outdoor scene: keep upper sign panels; ignore road stripes when scaling area
+    const double referenceArea = std::max(largestEligibleArea, 1.0);
+    for (const auto &candidate : candidates)
+    {
+        if (candidate.area < referenceArea * 0.20)
+            continue;
+
+        double centerY = candidate.boundingBox.y + candidate.boundingBox.height / 2.0;
+        if (centerY > inputImage.rows * 0.72)
+            continue;
+
+        if ((double)candidate.boundingBox.width > candidate.boundingBox.height * 2.0)
+            continue;
+
+        cv::drawContours(cleanedMask, std::vector<std::vector<cv::Point>>{candidate.contour},
+                         -1, cv::Scalar(255), cv::FILLED);
+    }
+
+    return cleanedMask;
 }

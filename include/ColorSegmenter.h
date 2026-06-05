@@ -31,4 +31,7 @@ public:
     cv::Mat getStaticRedMask(const cv::Mat &inputImage) const;
     cv::Mat getStaticYellowMask(const cv::Mat &inputImage) const;
     cv::Mat getStaticBlueMask(const cv::Mat &inputImage) const;
+    cv::Mat getStaticOrangeMask(const cv::Mat &inputImage) const;
+    cv::Mat getStaticGreenMask(const cv::Mat &inputImage) const;
+    cv::Mat getStaticWhiteMask(const cv::Mat &inputImage) const;
 };
