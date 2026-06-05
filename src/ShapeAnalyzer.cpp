@@ -167,22 +167,26 @@ void ShapeAnalyzer::detectInfoSign(const cv::Mat &binaryMask, cv::Mat &outputIma
 
 int ShapeAnalyzer::classifyWarningIcon(const cv::Mat &bgrImage, const cv::Rect &boundingBox) const
 {
-    // --- 1. THE BORDER CROP FIX ---
-    // Shrink the bounding box by 15% on all sides to throw away the black border.
-    int marginX = boundingBox.width * 0.15;
-    int marginY = boundingBox.height * 0.15;
-    cv::Rect innerBox(
-        boundingBox.x + marginX,
-        boundingBox.y + marginY,
-        boundingBox.width - (2 * marginX),
-        boundingBox.height - (2 * marginY));
+    // --- 1. THE PLAQUE CHOPPER ---
+    cv::Rect strictBox = boundingBox;
+    if (strictBox.height > strictBox.width * 1.1)
+    {
+        strictBox.height = strictBox.width;
+    }
 
-    // Safety check to keep the new box strictly inside the image bounds
+    // --- 2. GENTLE CROP ---
+    // Dropped to just 5% to remove stray background pixels without chopping the icon
+    int margin = strictBox.width * 0.05;
+    cv::Rect innerBox(
+        strictBox.x + margin,
+        strictBox.y + margin,
+        strictBox.width - (2 * margin),
+        strictBox.height - (2 * margin));
     innerBox &= cv::Rect(0, 0, bgrImage.cols, bgrImage.rows);
-    if (innerBox.empty() || innerBox.width < 10 || innerBox.height < 10)
+    if (innerBox.width < 10 || innerBox.height < 10)
         return 0;
 
-    // --- 2. ISOLATE THE ICON ---
+    // --- 3. ISOLATE DARK PIXELS ---
     cv::Mat roi = bgrImage(innerBox);
     cv::Mat hsvRoi, darkMask;
     cv::cvtColor(roi, hsvRoi, cv::COLOR_BGR2HSV);
@@ -193,49 +197,51 @@ int ShapeAnalyzer::classifyWarningIcon(const cv::Mat &bgrImage, const cv::Rect &
     std::vector<std::vector<cv::Point>> contours;
     cv::findContours(darkMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
+    // Create a brand new, empty mask to hold ONLY the true icons
+    cv::Mat cleanMask = cv::Mat::zeros(darkMask.size(), CV_8UC1);
     cv::Rect combinedDarkBox;
-    for (const auto &contour : contours)
+
+    for (size_t i = 0; i < contours.size(); i++)
     {
-        cv::Rect box = cv::boundingRect(contour);
+        cv::Rect box = cv::boundingRect(contours[i]);
         if (box.area() < 15)
-            continue; // Ignore tiny pixel noise
+            continue;
+
+        // --- THE BORDER ASSASSIN ---
+        // If the black shape spans > 75% of the sign, it is the diagonal border ring. Ignore it!
+        if (box.width > innerBox.width * 0.75 || box.height > innerBox.height * 0.75)
+            continue;
+
+        // Draw ONLY the valid internal icons onto our clean mask
+        cv::drawContours(cleanMask, contours, (int)i, cv::Scalar(255), cv::FILLED);
         combinedDarkBox = combinedDarkBox.empty() ? box : (combinedDarkBox | box);
     }
 
     if (combinedDarkBox.empty())
         return 0;
 
-    // --- 3. GEOMETRIC CLASSIFICATION ---
+    // --- 4. GEOMETRY MATH (Now 100% isolated from the border!) ---
     double shapeRatio = (double)combinedDarkBox.height / std::max(1, combinedDarkBox.width);
     double wideRatio = (double)combinedDarkBox.width / std::max(1, combinedDarkBox.height);
 
-    // TEST 1: Bicycle (HoughCircles)
-    // Run this first, but with a stricter param2 (15.0) so it demands perfect circles (wheels)
+    // TEST 1: Pedestrian (Tall)
+    if (shapeRatio > 1.3)
+        return 1;
+
+    // TEST 2: Animal (Wide)
+    if (wideRatio > 1.2 && darkAreaRatio > 0.05)
+        return 2;
+
+    // TEST 3: Bicycle (Run HoughCircles on the CLEAN mask, not the raw dark mask)
     cv::Mat blurred;
-    cv::GaussianBlur(darkMask, blurred, cv::Size(7, 7), 1.5);
+    cv::GaussianBlur(cleanMask, blurred, cv::Size(7, 7), 1.5);
     std::vector<cv::Vec3f> circles;
     cv::HoughCircles(blurred, circles, cv::HOUGH_GRADIENT, 1.2,
-                     std::max(12, darkMask.cols / 5), 100.0, 15.0,
-                     std::max(3, darkMask.cols / 20), std::max(8, darkMask.cols / 4));
+                     std::max(12, cleanMask.cols / 5), 100.0, 22.0,
+                     std::max(3, cleanMask.cols / 20), std::max(8, cleanMask.cols / 4));
 
     if (circles.size() >= 2)
-    {
-        return 3; // Bicycle
-    }
-
-    // TEST 2: Pedestrian (Tall)
-    // Relaxed to 1.3. A walking person is taller than they are wide.
-    if (shapeRatio > 1.3)
-    {
-        return 1; // Pedestrian
-    }
-
-    // TEST 3: Animal (Wide)
-    // Relaxed to 1.2. A leaping deer is clearly wider than it is tall.
-    if (wideRatio > 1.2 && darkAreaRatio > 0.05)
-    {
-        return 2; // Animal
-    }
+        return 3;
 
     return 0; // Generic Warning Sign
 }
